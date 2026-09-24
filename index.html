@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -17,10 +17,19 @@
       </div>
     </div>
     <div class="topbar-meta">
+      <!-- Pengalih Tema (Light / Dark) -->
+      <button class="theme-toggle-btn" id="btnToggleTheme" type="button" aria-label="Ganti Tema Tampilan (Terang / Gelap)" title="Ganti Mode Terang / Gelap">
+        <svg class="theme-icon" id="themeSunIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        <svg class="theme-icon" id="themeMoonIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        <span id="themeLabel">Mode Terang</span>
+      </button>
+
+      <!-- Status Koneksi -->
       <div class="status-indicator" id="statusBadge" role="status" aria-live="polite">
         <span class="status-dot"></span>
         <span id="statusText">Memeriksa kunci…</span>
       </div>
+
       <a class="btn subtle btn-xs" href="https://console.groq.com/keys" target="_blank" rel="noopener">Ambil API Key Groq</a>
       <a class="btn subtle btn-xs" href="https://console.groq.com/docs/models" target="_blank" rel="noopener">Spesifikasi Model</a>
     </div>
@@ -183,7 +192,11 @@
           <div id="chatStream" class="chat-stream" role="log" aria-live="polite" aria-label="Aliran Percakapan"></div>
 
           <div id="typingIndicator" class="typing-status hidden" role="status" aria-live="assertive">
-            <span class="typing-dot"></span>
+            <span class="typing-dots" aria-hidden="true">
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+            </span>
             <span id="typingLabel">Mengirim payload ke api.groq.com…</span>
           </div>
 

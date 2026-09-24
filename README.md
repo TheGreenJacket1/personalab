@@ -38,6 +38,9 @@ Dibangun dengan mematuhi standar kualitas ketat **Anti-Slop Engine**: berorienta
    - Menyuntikkan prompt kontradiktif untuk mendemonstrasikan degradasi kinerja model saat dibebani kriteria yang saling berbenturan.
 6. **Ekspor Riwayat (.json):**
    - Mengunduh artefak sesi riset berisi stempel waktu ISO, konfigurasi parameter decoding, system prompt aktif, dan seluruh array percakapan.
+7. **Tema Ganda & Animasi Interaksi Taktil (Purposeful Motion):**
+   - Mendukung **Mode Terang** (*Scientific Notebook*) dan **Mode Gelap** (*Dark Slate*) dengan deteksi preferensi sistem otomatis (`prefers-color-scheme`) serta persistensi `localStorage`.
+   - Dilengkapi animasi umpan balik interaktif: *press feedback* tombol, transisi tab spatial, gelembung pesan masuk dinamis, serta proteksi aksesibilitas `@media (prefers-reduced-motion: reduce)`.
 
 ---
 

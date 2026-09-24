@@ -63,9 +63,11 @@ const DILUTION_PROMPT =
 const API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MAX_TURNS = 6; // Menyimpan 6 putaran percakapan terakhir (12 pesan)
 const STORAGE_KEY = "personalab_groq_key";
+const THEME_STORAGE_KEY = "personalab_theme";
 
 // --- State Aplikasi ---
 const state = {
+  theme: "dark",
   persona: "Dosen_Tegas",
   model: CANDIDATE_MODELS[0],
   histories: {
@@ -106,6 +108,50 @@ function setKey(val) {
     localStorage.setItem(STORAGE_KEY, val.trim());
   }
   updateConnectionBadge();
+}
+
+// --- Manajemen Tema (Dark / Light) ---
+function applyTheme(theme) {
+  state.theme = theme;
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem(THEME_STORAGE_KEY, theme);
+
+  const sunIcon = $("themeSunIcon");
+  const moonIcon = $("themeMoonIcon");
+  const label = $("themeLabel");
+
+  if (theme === "light") {
+    if (sunIcon) sunIcon.style.display = "none";
+    if (moonIcon) moonIcon.style.display = "inline-block";
+    if (label) label.textContent = "Mode Gelap";
+  } else {
+    if (sunIcon) sunIcon.style.display = "inline-block";
+    if (moonIcon) moonIcon.style.display = "none";
+    if (label) label.textContent = "Mode Terang";
+  }
+}
+
+function initTheme() {
+  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+  if (savedTheme === "light" || savedTheme === "dark") {
+    applyTheme(savedTheme);
+  } else {
+    const prefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+    applyTheme(prefersLight ? "light" : "dark");
+  }
+
+  if (window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", (e) => {
+      if (!localStorage.getItem(THEME_STORAGE_KEY)) {
+        applyTheme(e.matches ? "light" : "dark");
+      }
+    });
+  }
+}
+
+function toggleTheme() {
+  const nextTheme = state.theme === "dark" ? "light" : "dark";
+  applyTheme(nextTheme);
 }
 
 // --- Visual Telemetry & Status Badges ---
@@ -652,6 +698,12 @@ function syncPersonaSelection() {
 }
 
 function initEventHandlers() {
+  // Pengalih Tema
+  const btnToggleTheme = $("btnToggleTheme");
+  if (btnToggleTheme) {
+    btnToggleTheme.addEventListener("click", toggleTheme);
+  }
+
   // Tab Switcher
   $("tabBtnChat").addEventListener("click", () => switchTab("tabChat"));
   $("tabBtnLab").addEventListener("click", () => switchTab("tabLab"));
@@ -810,6 +862,8 @@ function initEventHandlers() {
 
 // --- Inisialisasi Aplikasi ---
 function initializeWorkbench() {
+  initTheme();
+
   const existingKey = getKey();
   if (existingKey) {
     $("apiKey").value = existingKey;
