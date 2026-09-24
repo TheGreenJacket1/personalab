@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PersonaLab — Multi-Persona Chatbot (Groq)</title>
+  <meta name="description" content="PersonaLab: chatbot 3 persona (Dosen_Tegas, Kakak_Santai, Om_Reza) memakai Groq API. Siap deploy GitHub Pages." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">🧪</span>
+      <div>
+        <h1>PersonaLab</h1>
+        <p>Multi-Persona Chatbot · Groq · ITC AI/ML</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="badge" id="statusBadge">⏳ belum ada key</span>
+      <a class="btn ghost" href="https://console.groq.com/keys" target="_blank" rel="noopener">Ambil Key Gratis</a>
+      <a class="btn ghost" href="https://console.groq.com/docs/models" target="_blank" rel="noopener">Daftar Model</a>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <section class="card">
+        <h2>1 · API Key Groq</h2>
+        <p class="muted">Key hanya disimpan di <code>localStorage</code> browser kamu. Tidak dikirim ke mana pun selain <code>api.groq.com</code>.</p>
+        <input id="apiKey" type="password" placeholder="gsk_..." autocomplete="off" />
+        <div class="row">
+          <button class="btn primary" id="btnSaveKey">Simpan</button>
+          <button class="btn" id="btnTestKey">Test</button>
+          <button class="btn danger-ghost" id="btnClearKey" title="Hapus key dari browser">Hapus</button>
+        </div>
+        <p class="muted small" id="keyMsg"></p>
+      </section>
+
+      <section class="card">
+        <h2>2 · Model</h2>
+        <select id="modelSelect"></select>
+        <p class="muted small">Urutan default: <code>gpt-oss-20b</code> → <code>gpt-oss-120b</code> → lainnya. Jika 404 / kosong, app otomatis fallback.</p>
+        <label class="check"><input type="checkbox" id="autoFallback" checked /> Auto-fallback model</label>
+      </section>
+
+      <section class="card">
+        <h2>3 · Persona</h2>
+        <div class="personas" id="personaList">
+          <button data-persona="Dosen_Tegas" class="persona active">
+            <strong>👩‍🏫 Dosen_Tegas</strong>
+            <span>Bu Sari · formal · ≤3 kalimat · tutup dengan pertanyaan</span>
+            <em>temp 0.2</em>
+          </button>
+          <button data-persona="Kakak_Santai" class="persona">
+            <strong>🧑‍🎓 Kakak_Santai</strong>
+            <span>Kating TI · santai · ≤2 kalimat · 1 saran hari ini</span>
+            <em>temp 0.4</em>
+          </button>
+          <button data-persona="Om_Reza" class="persona">
+            <strong>🧔 Om_Reza</strong>
+            <span>Mentor karier · omelan + solusi + motivasi</span>
+            <em>temp 0.4</em>
+          </button>
+        </div>
+        <div class="row">
+          <button class="btn" id="btnClear">🧹 Clear memory</button>
+          <button class="btn" id="btnExport">⬇ Export chat</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>4 · Demo sekali klik</h2>
+        <div class="row wrap">
+          <button class="btn" id="btnDemoMemory">🧠 Demo memory</button>
+          <button class="btn" id="btnDemoDilution">💥 Demo dilution</button>
+          <button class="btn" id="btnEval">📊 Eval 3 persona</button>
+        </div>
+        <p class="muted small">Demo memory: kirim nama → tanya balik. Dilution: prompt konflik. Eval: 1 pertanyaan × 3 persona (temp 0.1).</p>
+      </section>
+
+      <section class="card">
+        <h2>Troubleshooting</h2>
+        <details><summary>401 Unauthorized</summary><p>Key salah / ada spasi. Paste ulang dari console.groq.com/keys.</p></details>
+        <details><summary>404 model_not_found</summary><p>Model pensiun (mis. llama-3.1/3.3 per Agu 2026). Pilih <code>openai/gpt-oss-20b</code>.</p></details>
+        <details><summary>429 rate limit</summary><p>Tunggu ±1 menit, kecilkan pesan, atau ganti model kecil.</p></details>
+        <details><summary>Jawaban kosong</summary><p><code>gpt-oss</code> butuh max_tokens ≥300. App sudah pakai 400–500 + retry otomatis.</p></details>
+      </section>
+    </aside>
+
+    <main class="main">
+      <section class="card chat-card">
+        <div class="chat-head">
+          <div>
+            <h2 id="chatTitle">👩‍🏫 Dosen_Tegas</h2>
+            <p class="muted" id="chatSub">Memory: 0 pesan · max 12 tersimpan</p>
+          </div>
+          <span class="badge" id="modelBadge">model: -</span>
+        </div>
+        <div id="chat" class="chat"></div>
+        <div id="typing" class="typing hidden">mengetik…</div>
+        <form id="form" class="composer">
+          <input id="input" type="text" placeholder="Tulis pesan lalu Enter… (mis. Aku selalu menunda project AI…)" autocomplete="off" />
+          <button class="btn primary" type="submit">Kirim</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Hasil evaluasi / demo</h2>
+        <div id="evalOut" class="eval-out"><p class="muted">Belum ada. Klik <b>Eval 3 persona</b> atau <b>Demo</b> di sidebar.</p></div>
+      </section>
+
+      <section class="card">
+        <h2>Tentang proyek</h2>
+        <ul>
+          <li><b>Stateless:</b> tiap request kirim ulang <code>messages</code> (system + history). Clear = reset memory.</li>
+          <li><b>Persona terstruktur:</b> Identitas → Gaya → Larangan → Contoh. Beda temperature per persona.</li>
+          <li><b>Instruction dilution:</b> prompt konflik → model cherry-pick. Bukti struktur penting.</li>
+          <li><b>Notebook pendamping:</b> <code>PersonaLab_final.ipynb</code> (eksperimen + Gradio). Web ini versi statisnya untuk GitHub Pages.</li>
+        </ul>
+      </section>
+
+      <footer class="muted small">PersonaLab · Groq OpenAI-compatible · Key milikmu, tersimpan lokal · <a href="https://github.com" target="_blank" rel="noopener">Deploy via GitHub Pages</a></footer>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
