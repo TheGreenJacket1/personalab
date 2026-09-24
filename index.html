@@ -3,126 +3,294 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PersonaLab — Multi-Persona Chatbot (Groq)</title>
-  <meta name="description" content="PersonaLab: chatbot 3 persona (Dosen_Tegas, Kakak_Santai, Om_Reza) memakai Groq API. Siap deploy GitHub Pages." />
+  <title>PersonaLab — Multi-Persona LLM Workbench</title>
+  <meta name="description" content="PersonaLab: Workbench pengujian rekayasa prompt, parameter decoding, dan retensi memori multi-persona berbasis Groq API." />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">
-      <span class="logo">🧪</span>
-      <div>
+    <div class="brand-group">
+      <span class="brand-badge">LAB</span>
+      <div class="brand-titles">
         <h1>PersonaLab</h1>
-        <p>Multi-Persona Chatbot · Groq · ITC AI/ML</p>
+        <p>Workbench Rekayasa Prompt &amp; Pengujian Multi-Persona · Groq Inference</p>
       </div>
     </div>
-    <div class="top-actions">
-      <span class="badge" id="statusBadge">⏳ belum ada key</span>
-      <a class="btn ghost" href="https://console.groq.com/keys" target="_blank" rel="noopener">Ambil Key Gratis</a>
-      <a class="btn ghost" href="https://console.groq.com/docs/models" target="_blank" rel="noopener">Daftar Model</a>
+    <div class="topbar-meta">
+      <div class="status-indicator" id="statusBadge" role="status" aria-live="polite">
+        <span class="status-dot"></span>
+        <span id="statusText">Memeriksa kunci…</span>
+      </div>
+      <a class="btn subtle btn-xs" href="https://console.groq.com/keys" target="_blank" rel="noopener">Ambil API Key Groq</a>
+      <a class="btn subtle btn-xs" href="https://console.groq.com/docs/models" target="_blank" rel="noopener">Spesifikasi Model</a>
     </div>
   </header>
 
   <div class="layout">
-    <aside class="sidebar">
-      <section class="card">
-        <h2>1 · API Key Groq</h2>
-        <p class="muted">Key hanya disimpan di <code>localStorage</code> browser kamu. Tidak dikirim ke mana pun selain <code>api.groq.com</code>.</p>
-        <input id="apiKey" type="password" placeholder="gsk_..." autocomplete="off" />
-        <div class="row">
-          <button class="btn primary" id="btnSaveKey">Simpan</button>
-          <button class="btn" id="btnTestKey">Test</button>
-          <button class="btn danger-ghost" id="btnClearKey" title="Hapus key dari browser">Hapus</button>
+    <!-- Sidebar Controls -->
+    <aside class="sidebar" aria-label="Kontrol Konfigurasi Workbench">
+      <!-- 1. Kredensial API -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">1 · Kredensial Groq API</h2>
+          <span class="panel-meta">localStorage</span>
         </div>
-        <p class="muted small" id="keyMsg"></p>
+        <div class="field-group">
+          <label class="field-label" for="apiKey">API Key Groq (format <code>gsk_...</code>)</label>
+          <div class="input-with-button">
+            <input id="apiKey" type="password" placeholder="gsk_..." autocomplete="off" spellcheck="false" />
+            <button class="btn subtle" id="btnToggleKeyVis" type="button" title="Tampilkan/sembunyikan kunci" aria-label="Tampilkan atau sembunyikan kunci">Lihat</button>
+          </div>
+          <p class="help-text">Kunci tersimpan secara eksklusif di peramban Anda. Permintaan dikirim langsung ke endpoint <code>api.groq.com</code> tanpa perantara server.</p>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" id="btnSaveKey" type="button">Simpan Kunci</button>
+          <button class="btn" id="btnTestKey" type="button">Uji Koneksi (Ping)</button>
+          <button class="btn danger-outline" id="btnClearKey" type="button">Hapus</button>
+        </div>
+        <div class="action-feedback" id="keyMsg" role="status"></div>
       </section>
 
-      <section class="card">
-        <h2>2 · Model</h2>
-        <select id="modelSelect"></select>
-        <p class="muted small">Urutan default: <code>gpt-oss-20b</code> → <code>gpt-oss-120b</code> → lainnya. Jika 404 / kosong, app otomatis fallback.</p>
-        <label class="check"><input type="checkbox" id="autoFallback" checked /> Auto-fallback model</label>
+      <!-- 2. Model & Fallback -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">2 · Model LLM</h2>
+          <span class="panel-meta" id="modelActiveBadge">gpt-oss-20b</span>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="modelSelect">Target Model (Groq Inference)</label>
+          <select id="modelSelect"></select>
+          <label class="checkbox-label" for="autoFallback">
+            <input type="checkbox" id="autoFallback" checked />
+            <span>Aktifkan failover otomatis jika model pensiun (404) atau rate limit (429)</span>
+          </label>
+          <p class="help-text">Prioritas: <code>openai/gpt-oss-20b</code> sebagai default stabil. Jika kuota penuh atau 404, request dialihkan otomatis ke kandidat berikutnya.</p>
+        </div>
       </section>
 
-      <section class="card">
-        <h2>3 · Persona</h2>
-        <div class="personas" id="personaList">
-          <button data-persona="Dosen_Tegas" class="persona active">
-            <strong>👩‍🏫 Dosen_Tegas</strong>
-            <span>Bu Sari · formal · ≤3 kalimat · tutup dengan pertanyaan</span>
-            <em>temp 0.2</em>
+      <!-- 3. Konfigurasi Persona -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">3 · Persona Aktif</h2>
+          <span class="panel-meta" id="activePersonaMeta">temp 0.2 · max 400</span>
+        </div>
+        <div class="persona-selector" id="personaList" role="radiogroup" aria-label="Pilihan Persona">
+          <button type="button" data-persona="Dosen_Tegas" class="persona-item active" role="radio" aria-checked="true">
+            <div class="persona-topline">
+              <span class="persona-name">Dosen_Tegas (Bu Sari)</span>
+              <span class="persona-param-badge">T: 0.2 · 400 tok</span>
+            </div>
+            <div class="persona-desc">Pembimbing skripsi TI formal. Tegas, rasional, membatasi respon maksimal 3 kalimat, ditutup pertanyaan konseptual.</div>
+            <div class="persona-rules">Aturan: Tanpa emoji · Tanpa IPK/nilai · Fokus topik skripsi</div>
           </button>
-          <button data-persona="Kakak_Santai" class="persona">
-            <strong>🧑‍🎓 Kakak_Santai</strong>
-            <span>Kating TI · santai · ≤2 kalimat · 1 saran hari ini</span>
-            <em>temp 0.4</em>
+
+          <button type="button" data-persona="Kakak_Santai" class="persona-item" role="radio" aria-checked="false">
+            <div class="persona-topline">
+              <span class="persona-name">Kakak_Santai (Kating TI)</span>
+              <span class="persona-param-badge">T: 0.4 · 400 tok</span>
+            </div>
+            <div class="persona-desc">Mahasiswa semester 7 yang membimbing adik tingkat. Bahasa santai-santun, maksimal 2 kalimat, wajib 1 aksi konkret hari ini.</div>
+            <div class="persona-rules">Aturan: Maks 2 kalimat · 1 aksi langsung · Nada suportif</div>
           </button>
-          <button data-persona="Om_Reza" class="persona">
-            <strong>🧔 Om_Reza</strong>
-            <span>Mentor karier · omelan + solusi + motivasi</span>
-            <em>temp 0.4</em>
+
+          <button type="button" data-persona="Om_Reza" class="persona-item" role="radio" aria-checked="false">
+            <div class="persona-topline">
+              <span class="persona-name">Om_Reza (Mentor Karier)</span>
+              <span class="persona-param-badge">T: 0.4 · 500 tok</span>
+            </div>
+            <div class="persona-desc">Praktisi industri senior. Evaluasi terstruktur 3 fase: teguran terhadap kebiasaan buruk + solusi taktis + motivasi eksekusi.</div>
+            <div class="persona-rules">Struktur wajib: (1) Omelan kebiasaan (2) Solusi (3) Dorongan</div>
           </button>
         </div>
-        <div class="row">
-          <button class="btn" id="btnClear">🧹 Clear memory</button>
-          <button class="btn" id="btnExport">⬇ Export chat</button>
-        </div>
+
+        <details class="technical-disclosure" id="promptInspection">
+          <summary>Inspeksi System Prompt Aktif</summary>
+          <div class="disclosure-body">
+            <p class="help-text">Prompt sistem yang diinjeksikan pada index 0 array <code>messages</code>:</p>
+            <pre class="code-preview" id="rawSystemPromptView"></pre>
+          </div>
+        </details>
       </section>
 
-      <section class="card">
-        <h2>4 · Demo sekali klik</h2>
-        <div class="row wrap">
-          <button class="btn" id="btnDemoMemory">🧠 Demo memory</button>
-          <button class="btn" id="btnDemoDilution">💥 Demo dilution</button>
-          <button class="btn" id="btnEval">📊 Eval 3 persona</button>
+      <!-- 4. Pengujian Terkendali -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">4 · Eksperimen &amp; Uji Kendali</h2>
+          <span class="panel-meta">Benchmark</span>
         </div>
-        <p class="muted small">Demo memory: kirim nama → tanya balik. Dilution: prompt konflik. Eval: 1 pertanyaan × 3 persona (temp 0.1).</p>
+        <div class="btn-row" style="flex-direction: column;">
+          <button class="btn block" id="btnEval" type="button">
+            <span>Jalankan Komparasi 3 Persona</span>
+          </button>
+          <button class="btn block subtle" id="btnDemoMemory" type="button">
+            <span>Uji Retensi Memori (Multi-turn)</span>
+          </button>
+          <button class="btn block subtle" id="btnDemoDilution" type="button">
+            <span>Uji Instruction Dilution (Konflik Prompt)</span>
+          </button>
+        </div>
+        <p class="help-text">Eksperimen komparasi mengirimkan 1 pertanyaan identik ke 3 persona pada <code>temperature=0.1</code> untuk menguji konsistensi kepatuhan aturan.</p>
       </section>
 
-      <section class="card">
-        <h2>Troubleshooting</h2>
-        <details><summary>401 Unauthorized</summary><p>Key salah / ada spasi. Paste ulang dari console.groq.com/keys.</p></details>
-        <details><summary>404 model_not_found</summary><p>Model pensiun (mis. llama-3.1/3.3 per Agu 2026). Pilih <code>openai/gpt-oss-20b</code>.</p></details>
-        <details><summary>429 rate limit</summary><p>Tunggu ±1 menit, kecilkan pesan, atau ganti model kecil.</p></details>
-        <details><summary>Jawaban kosong</summary><p><code>gpt-oss</code> butuh max_tokens ≥300. App sudah pakai 400–500 + retry otomatis.</p></details>
+      <!-- 5. Troubleshooting Teknis -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Diagnosis &amp; Troubleshooting</h2>
+        </div>
+        <details class="technical-disclosure">
+          <summary>HTTP 401: Unauthorized</summary>
+          <div class="disclosure-body">Kunci API tidak valid atau terdapat spasi tak sengaja. Salin ulang kunci dari konsol Groq dan simpan kembali.</div>
+        </details>
+        <details class="technical-disclosure">
+          <summary>HTTP 404: model_not_found</summary>
+          <div class="disclosure-body">Model telah didegradasi/pensiun oleh Groq. Aktifkan auto-fallback atau pilih <code>openai/gpt-oss-20b</code>.</div>
+        </details>
+        <details class="technical-disclosure">
+          <summary>HTTP 429: Rate Limit Exceeded</summary>
+          <div class="disclosure-body">Batas request per menit tercapai. Sistem menerapkan jeda otomatis 2.5 detik sebelum mencoba kembali.</div>
+        </details>
+        <details class="technical-disclosure">
+          <summary>Respon Kosong ('')</summary>
+          <div class="disclosure-body">Karakteristik model keluarga gpt-oss bila <code>max_tokens</code> di bawah 300. Workbench ini menetapkan batas minimal 400 token untuk menjamin kelengkapan teks.</div>
+        </details>
       </section>
     </aside>
 
-    <main class="main">
-      <section class="card chat-card">
-        <div class="chat-head">
-          <div>
-            <h2 id="chatTitle">👩‍🏫 Dosen_Tegas</h2>
-            <p class="muted" id="chatSub">Memory: 0 pesan · max 12 tersimpan</p>
+    <!-- Main Interactive Workspace -->
+    <main class="main-workspace">
+      <!-- Workspace Navigation Tabs -->
+      <nav class="workspace-tabs" role="tablist" aria-label="Tampilan Workbench">
+        <button class="tab-btn active" id="tabBtnChat" role="tab" aria-selected="true" aria-controls="tabChat" type="button">Percakapan Interaktif</button>
+        <button class="tab-btn" id="tabBtnLab" role="tab" aria-selected="false" aria-controls="tabLab" type="button">Laboratorium &amp; Evaluasi</button>
+        <button class="tab-btn" id="tabBtnDoc" role="tab" aria-selected="false" aria-controls="tabDoc" type="button">Arsitektur &amp; Landasan Teori</button>
+      </nav>
+
+      <!-- TAB 1: Chat Interaktif -->
+      <div class="tab-content active" id="tabChat" role="tabpanel" aria-labelledby="tabBtnChat">
+        <div class="chat-workbench">
+          <header class="chat-header">
+            <div class="chat-persona-identity">
+              <span class="chat-persona-name" id="chatTitle">Dosen_Tegas (Bu Sari)</span>
+              <span class="chat-persona-spec" id="chatSub">Sliding buffer: 0 / 12 pesan</span>
+            </div>
+            <div class="chat-actions">
+              <span class="memory-meter" id="modelActiveIndicator">Model: gpt-oss-20b</span>
+              <button class="btn subtle btn-xs" id="btnClear" type="button" title="Kosongkan memori percakapan persona saat ini">Reset Sesi</button>
+              <button class="btn subtle btn-xs" id="btnExport" type="button" title="Ekspor riwayat percakapan dalam format JSON">Ekspor JSON</button>
+            </div>
+          </header>
+
+          <div id="chatStream" class="chat-stream" role="log" aria-live="polite" aria-label="Aliran Percakapan"></div>
+
+          <div id="typingIndicator" class="typing-status hidden" role="status" aria-live="assertive">
+            <span class="typing-dot"></span>
+            <span id="typingLabel">Mengirim payload ke api.groq.com…</span>
           </div>
-          <span class="badge" id="modelBadge">model: -</span>
+
+          <div class="chat-composer">
+            <form id="composerForm" class="composer-form">
+              <div class="composer-input-wrapper">
+                <textarea
+                  id="composerInput"
+                  class="composer-textarea"
+                  rows="2"
+                  placeholder="Ketik pertanyaan atau skenario (contoh: 'Bu, saya bingung menentukan batasan masalah skripsi…')"
+                  autocomplete="off"
+                  spellcheck="false"
+                ></textarea>
+                <div class="composer-hints">
+                  <span>Tekan <kbd>Enter</kbd> untuk mengirim, <kbd>Shift + Enter</kbd> untuk baris baru.</span>
+                  <span id="charCounter">0 karakter</span>
+                </div>
+              </div>
+              <button class="btn primary" id="btnSend" type="submit" style="align-self: flex-start; height: 44px; min-width: 80px;">Kirim</button>
+            </form>
+          </div>
         </div>
-        <div id="chat" class="chat"></div>
-        <div id="typing" class="typing hidden">mengetik…</div>
-        <form id="form" class="composer">
-          <input id="input" type="text" placeholder="Tulis pesan lalu Enter… (mis. Aku selalu menunda project AI…)" autocomplete="off" />
-          <button class="btn primary" type="submit">Kirim</button>
-        </form>
-      </section>
+      </div>
 
-      <section class="card">
-        <h2>Hasil evaluasi / demo</h2>
-        <div id="evalOut" class="eval-out"><p class="muted">Belum ada. Klik <b>Eval 3 persona</b> atau <b>Demo</b> di sidebar.</p></div>
-      </section>
+      <!-- TAB 2: Laboratorium & Evaluasi -->
+      <div class="tab-content" id="tabLab" role="tabpanel" aria-labelledby="tabBtnLab">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Hasil Uji Kendali &amp; Evaluasi Terstruktur</h2>
+              <p class="help-text" style="margin: 2px 0 0;">Pengujian respon simultan, verifikasi retensi konteks, dan degradasi instruction dilution.</p>
+            </div>
+            <button class="btn subtle btn-xs" id="btnClearLab" type="button">Bersihkan Hasil Uji</button>
+          </div>
+          <div id="evalContainer" class="lab-grid" role="region" aria-label="Hasil Uji Laboratorium">
+            <div class="eval-run-card" id="evalPlaceholder">
+              <div class="eval-run-card-header">
+                <div>
+                  <h3 class="eval-run-title">Belum Ada Sesi Pengujian</h3>
+                  <div class="eval-run-meta">Gunakan tombol pada panel samping kiri ("Jalankan Komparasi 3 Persona" atau "Uji Instruction Dilution") untuk memicu pengujian terkontrol.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <section class="card">
-        <h2>Tentang proyek</h2>
-        <ul>
-          <li><b>Stateless:</b> tiap request kirim ulang <code>messages</code> (system + history). Clear = reset memory.</li>
-          <li><b>Persona terstruktur:</b> Identitas → Gaya → Larangan → Contoh. Beda temperature per persona.</li>
-          <li><b>Instruction dilution:</b> prompt konflik → model cherry-pick. Bukti struktur penting.</li>
-          <li><b>Notebook pendamping:</b> <code>PersonaLab_final.ipynb</code> (eksperimen + Gradio). Web ini versi statisnya untuk GitHub Pages.</li>
-        </ul>
-      </section>
+      <!-- TAB 3: Arsitektur & Landasan Teori -->
+      <div class="tab-content" id="tabDoc" role="tabpanel" aria-labelledby="tabBtnDoc">
+        <article class="doc-section">
+          <h2>Prinsip Arsitektur LLM &amp; Metodologi Prompting</h2>
+          <p>Aplikasi ini dirancang sebagai instrumen laboratorium untuk mendemonstrasikan perilaku dasar Large Language Models (LLM) saat dioperasikan melalui API tanpa perantara backend terpusat (serverless client-side architecture).</p>
 
-      <footer class="muted small">PersonaLab · Groq OpenAI-compatible · Key milikmu, tersimpan lokal · <a href="https://github.com" target="_blank" rel="noopener">Deploy via GitHub Pages</a></footer>
+          <table class="doc-table">
+            <thead>
+              <tr>
+                <th>Komponen</th>
+                <th>Mekanisme Implementasi</th>
+                <th>Rasional Teknis</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>Stateless Conversation</b></td>
+                <td>Mengirim ulang seluruh riwayat percakapan pada setiap request HTTP.</td>
+                <td>API model inferensi tidak menyimpan memori antar panggilan. Tanpa injeksi array <code>messages</code>, model memperlakukan tiap prompt sebagai sesi baru.</td>
+              </tr>
+              <tr>
+                <td><b>Sliding Window Memory</b></td>
+                <td>Pemotongan riwayat pada 6 giliran terakhir (12 pesan: 6 user + 6 assistant).</td>
+                <td>Mencegah pembengkakan konsumsi kuota token konteks serta menjaga latensi inferensi tetap rendah tanpa menghilangkan konteks langsung.</td>
+              </tr>
+              <tr>
+                <td><b>Parameter Decoding</b></td>
+                <td>Temperature 0.2 untuk dosen akademis; 0.4 untuk mentor karier dan kakak santai.</td>
+                <td>Nilai temperature rendah menekan variansi token (deterministik), cocok untuk persona formal yang terikat batasan ketat. Temperature sedikit lebih tinggi memberikan keluwesan idiomatis.</td>
+              </tr>
+              <tr>
+                <td><b>Instruction Dilution</b></td>
+                <td>Pengujian dengan menyatukan instruksi kontradiktif ke dalam satu system prompt.</td>
+                <td>Membuktikan bahwa menambahkan terlalu banyak kriteria bertentangan menyebabkan model melakukan "cherry-picking" dan mengabaikan aturan esensial.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2 style="margin-top: 24px;">Penerapan Standar Anti-Slop</h2>
+          <p>Proyek ini mengadopsi prinsip <b>Anti-Slop Engine</b> guna memastikan fungsionalitas dan kejujuran teknis:</p>
+          <ul>
+            <li><b>Tanpa Bukti Palsu (Zero Fabricated Metrics):</b> Metrik seperti latensi inferensi dan jumlah kalimat dihitung secara riil dari payload API aktual, bukan simulasi angka acak.</li>
+            <li><b>Transparansi Payload:</b> Pengguna dapat memeriksa secara langsung system prompt mentah yang dikirimkan ke model melalui panel inspeksi.</li>
+            <li><b>Aksesibilitas Semantik:</b> Menggunakan standar HTML5 semantik, penanda ARIA yang tepat untuk aliran pesan live, kontras tinggi yang memenuhi standar WCAG, serta penanganan navigasi keyboard.</li>
+            <li><b>Penanganan Kegagalan yang Jujur:</b> Memberikan kode status HTTP spesifik (401, 404, 429) beserta panduan mitigasi konkret alih-alih pesan kesalahan yang ambigu.</li>
+          </ul>
+        </article>
+      </div>
     </main>
   </div>
+
+  <footer class="workbench-footer">
+    <div>
+      <strong>PersonaLab</strong> · Client-side LLM Workbench · Data &amp; kunci tersimpan lokal di peramban.
+    </div>
+    <div>
+      Inference endpoint: <code>api.groq.com/openai/v1</code> · Siap deploy ke GitHub Pages.
+    </div>
+  </footer>
 
   <script src="app.js"></script>
 </body>
